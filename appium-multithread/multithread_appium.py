@@ -17,7 +17,6 @@ from selenium.webdriver.common.actions.action_builder import ActionBuilder
 from selenium.webdriver.common.actions.pointer_input import PointerInput
 from selenium.webdriver.common.actions import interaction
 
-
 def login_to_zalo(index, instance_port, udid):
     service = None
     driver = None
@@ -57,20 +56,33 @@ def login_to_zalo(index, instance_port, udid):
         zalo_icon.click()
 
         # 👉 Thực hiện các thao tác touch
-        def tap(x, y):
-            actions = ActionChains(driver)
-            actions.w3c_actions = ActionBuilder(driver, mouse=PointerInput(interaction.POINTER_TOUCH, "touch"))
-            actions.w3c_actions.pointer_action.move_to_location(x, y)
-            actions.w3c_actions.pointer_action.pointer_down()
-            actions.w3c_actions.pointer_action.pause(0.1)
-            actions.w3c_actions.pointer_action.release()
-            actions.perform()
+        # def tap(x, y):
+        #     finger = PointerInput(interaction.POINTER_TOUCH, "finger")
+        #     action = ActionBuilder(driver, mouse=finger)
+        #     action.pointer_action.move_to_location(x, y)
+        #     action.pointer_action.pointer_down()
+        #     action.pointer_action.pause(0.1)
+        #     action.pointer_action.pointer_up()
+        #     action.perform()
 
-        tap(652, 192)
-        tap(227, 644)
-        tap(488, 283)
-        tap(840, 552)
-        tap(1167, 646)
+
+        # tap(652, 192)
+        # tap(227, 644)
+        # tap(488, 283)
+        # tap(840, 552)
+        # tap(1167, 646)
+        driver.wait_activity("com.zing.zalo.ui.MainActivity", timeout=0.5)
+        el2 = driver.find_element(AppiumBy.ID, "com.zing.zalo:id/btn_find_friend_native")
+        print("ccccc")
+        el2.click()
+        el3 = driver.find_element(AppiumBy.ID, "com.zing.zalo:id/btn_auto_sync_contact")
+        el3.click()
+        print("tranlam")
+        wait = WebDriverWait(driver, 10)
+        el = wait.until(
+        EC.presence_of_element_located((AppiumBy.ID, "com.zing.zalo:id/edit_search"))
+        )
+        el.send_keys("huynhtranlam 079203017088 091922157 ngay xua rat tho be co 1 nang cong chua")
 
         time.sleep(10)
         driver.quit()
