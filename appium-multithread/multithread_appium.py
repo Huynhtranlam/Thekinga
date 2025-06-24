@@ -17,14 +17,40 @@ from selenium.webdriver.common.actions.action_builder import ActionBuilder
 from selenium.webdriver.common.actions.pointer_input import PointerInput
 from selenium.webdriver.common.actions import interaction
 
+
+def tap(driver, x, y, pause_sec: float = 0.1):
+    actions = ActionChains(driver)
+    actions.w3c_actions = ActionBuilder(
+        driver, mouse=PointerInput(interaction.POINTER_TOUCH, "touch")
+    )
+    a = actions.w3c_actions.pointer_action
+    a.move_to_location(x, y)
+    a.pointer_down()
+    a.pause(pause_sec)
+    a.pointer_up()
+    actions.perform()
+
+
+def swipe(driver, x1, y1, x2, y2, pause_sec: float = 0.0):
+    actions = ActionChains(driver)
+    actions.w3c_actions = ActionBuilder(
+        driver, mouse=PointerInput(interaction.POINTER_TOUCH, "touch")
+    )
+    a = actions.w3c_actions.pointer_action
+    a.move_to_location(x1, y1)
+    a.pointer_down()
+    a.pause(pause_sec)
+    a.move_to_location(x2, y2)
+    a.pointer_up()
+    actions.perform()
+
+
 def login_to_zalo(index, instance_port, udid):
     service = None
     driver = None
     try:
-        # ADB connect
         subprocess.run(["adb", "connect", udid], check=True)
 
-        # Start Appium server
         service = AppiumService()
         service.start(args=[
             "--address", "127.0.0.1",
@@ -33,84 +59,159 @@ def login_to_zalo(index, instance_port, udid):
         ])
         print(f"[{udid}] Appium server started at {instance_port}")
 
-        # Setup options
         options = UiAutomator2Options()
         options.set_capability("platformName", "Android")
         options.set_capability("platformVersion", "9")
         options.set_capability("automationName", "UiAutomator2")
         options.set_capability("udid", udid)
-
         options.set_capability("appPackage", "com.zing.zalo")
         options.set_capability("appActivity", "com.zing.zalo.ui.ZaloLauncherActivity")
         options.set_capability("noReset", True)
         options.set_capability("systemPort", random.randint(8201, 8299))
 
-        # Start driver
         driver = webdriver.Remote(f"http://127.0.0.1:{instance_port}/wd/hub", options=options)
-        wait = WebDriverWait(driver, 30)
-        print(f"[{udid}] Connected to Appium server at {instance_port}")
+        driver.implicitly_wait(10)
 
-        zalo_icon = wait.until(
-            EC.element_to_be_clickable((AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().description("Zalo")'))
+        # ============ BẮT ĐẦU CHUỖI ACTION ============
+
+        wait = WebDriverWait(driver, 20)
+
+        # ViewGroup đầu tiên – CHỈNH THÀNH WAIT
+        el5 = wait.until(
+            EC.element_to_be_clickable((AppiumBy.CLASS_NAME, "android.view.ViewGroup"))
         )
-        zalo_icon.click()
+        el5.click()
 
-        # 👉 Thực hiện các thao tác touch
-        # def tap(x, y):
-        #     finger = PointerInput(interaction.POINTER_TOUCH, "finger")
-        #     action = ActionBuilder(driver, mouse=finger)
-        #     action.pointer_action.move_to_location(x, y)
-        #     action.pointer_action.pointer_down()
-        #     action.pointer_action.pause(0.1)
-        #     action.pointer_action.pointer_up()
-        #     action.perform()
+        try:
+            el5 = WebDriverWait(driver, 20).until(
+                EC.presence_of_element_located((
+                    AppiumBy.ANDROID_UIAUTOMATOR,
+                    'new UiSelector().className("android.view.View").instance(8)'
+                ))
+            )
 
+            # 👉 Swipe 2
+            actions = ActionChains(driver)
+            actions.w3c_actions = ActionBuilder(driver, mouse=PointerInput(interaction.POINTER_TOUCH, "touch"))
+            actions.w3c_actions.pointer_action.move_to_location(756, 763)
+            actions.w3c_actions.pointer_action.pointer_down()
+            actions.w3c_actions.pointer_action.move_to_location(979, 35)
+            actions.w3c_actions.pointer_action.release()
+            actions.perform()
 
-        # tap(652, 192)
-        # tap(227, 644)
-        # tap(488, 283)
-        # tap(840, 552)
-        # tap(1167, 646)
-        driver.wait_activity("com.zing.zalo.ui.MainActivity", timeout=0.5)
-        el2 = driver.find_element(AppiumBy.ID, "com.zing.zalo:id/btn_find_friend_native")
-        print("ccccc")
-        el2.click()
-        el3 = driver.find_element(AppiumBy.ID, "com.zing.zalo:id/btn_auto_sync_contact")
-        el3.click()
-        print("tranlam")
-        wait = WebDriverWait(driver, 10)
-        el = wait.until(
-        EC.presence_of_element_located((AppiumBy.ID, "com.zing.zalo:id/edit_search"))
+        except:
+            print("Không tìm thấy el5 sau 20 giây.")
+        
+        
+        # Đợi đủ 2 ô EditText
+        name_box = wait.until(
+            EC.presence_of_element_located((
+                AppiumBy.ANDROID_UIAUTOMATOR,
+                'new UiSelector().className("android.widget.EditText").instance(0)'
+            ))
         )
-        el.send_keys("huynhtranlam 079203017088 091922157 ngay xua rat tho be co 1 nang cong chua")
+        wait.until(
+            EC.presence_of_element_located((
+                AppiumBy.ANDROID_UIAUTOMATOR,
+                'new UiSelector().className("android.widget.EditText").instance(2)'
+            ))
+        )
 
-        time.sleep(10)
-        driver.quit()
+        # Điền form
+        name_box.send_keys("Huỳnh Trần Đông")
+
+        email_box = driver.find_element(
+            AppiumBy.ANDROID_UIAUTOMATOR,
+            'new UiSelector().className("android.widget.EditText").instance(2)'
+        )
+        email_box.send_keys("a@a.com")
+
+        swipe(driver, 702, 654, 819, 321)
+
+        phone_box = driver.find_element(
+            AppiumBy.ANDROID_UIAUTOMATOR,
+            'new UiSelector().className("android.widget.EditText").instance(3)'
+        )
+        phone_box.send_keys("079099000625")
+
+        agree_chk = driver.find_element(
+            AppiumBy.ANDROID_UIAUTOMATOR,
+            'new UiSelector().textContains("đồng ý")'
+        )
+        agree_chk.click()
+
+        next_btn = driver.find_element(
+            AppiumBy.ANDROID_UIAUTOMATOR,
+            'new UiSelector().text("Tiếp tục (Next)")'
+        )
+        next_btn.click()
+
+        el5 = wait.until(
+            EC.presence_of_element_located((
+                AppiumBy.ANDROID_UIAUTOMATOR,
+                'new UiSelector().text("Tỉnh thành")'
+            ))
+        )
+        el5.click()
+        print("Tiền hành tỉnh thành")
+        time.sleep(0.2)
+        el6 = driver.find_element(
+            AppiumBy.ANDROID_UIAUTOMATOR,
+            'new UiSelector().text("Vui lòng chọn địa điểm, cửa hàng để hiển thị các khung giờ đăng ký.")'
+        )
+        el6.click()
+        time.sleep(0.2)
+        
+        el7 = driver.find_element(
+            AppiumBy.ANDROID_UIAUTOMATOR,
+            'new UiSelector().text("Cửa hàng")'
+        )
+        el7.click()
+        time.sleep(0.2)
+        el8 = driver.find_element(
+            AppiumBy.ANDROID_UIAUTOMATOR,
+            'new UiSelector().text("Please select a location & store to display the available registration time slots.")'
+        )
+        el8.click()
+
+        el9 = driver.find_element(
+            AppiumBy.ANDROID_UIAUTOMATOR,
+            'new UiSelector().text("25/06/202508:15 - 10:15")'
+        )
+        el9.click()
+
+        el10 = driver.find_element(
+            AppiumBy.ANDROID_UIAUTOMATOR,
+            'new UiSelector().className("android.widget.TextView").instance(13)'
+        )
+        el10.click()
+
+        print(f"[{udid}] Scenario completed.")
+        time.sleep(5)
 
     except Exception as e:
         print(f"[{udid}] Error: {e}")
+    finally:
         if driver:
             try:
                 driver.quit()
             except Exception:
                 pass
-    finally:
         if service:
             service.stop()
             print(f"[{udid}] Appium server stopped.")
 
 
-# === Multi-thread section ===
-
+# === Multi-thread ===
 number_of_instances = 1
 threads = []
 
 for i in range(number_of_instances):
     instance_port = 4723 + i
     udid = f"127.0.0.1:{5555 + (i * 10)}"
-    thread = Thread(target=login_to_zalo, args=(i, instance_port, udid))
-    thread.start()
-    threads.append(thread)
+    t = Thread(target=login_to_zalo, args=(i, instance_port, udid))
+    t.start()
+    threads.append(t)
 
-for thread in threads:
-    thread.join()
+for t in threads:
+    t.join()
