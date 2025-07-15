@@ -16,9 +16,10 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.actions.action_builder import ActionBuilder
 from selenium.webdriver.common.actions.pointer_input import PointerInput
 from selenium.webdriver.common.actions import interaction
+from selenium.common.exceptions import NoSuchElementException, WebDriverException
 
 
-def tap(driver, x, y, pause_sec: float = 0.1):
+def tap(driver, x, y, pause_sec: float = 0.02):
     actions = ActionChains(driver)
     actions.w3c_actions = ActionBuilder(
         driver, mouse=PointerInput(interaction.POINTER_TOUCH, "touch")
@@ -43,7 +44,30 @@ def swipe(driver, x1, y1, x2, y2, pause_sec: float = 0.0):
     a.move_to_location(x2, y2)
     a.pointer_up()
     actions.perform()
+def click_until_element_appears(driver, button_selector, target_selector, timeout=15, retry_interval=0.2):
+    start_time = time.time()
 
+    while time.time() - start_time < timeout:
+        try:
+            # Check nếu phần tử đích đã xuất hiện → kết thúc
+            driver.find_element(*target_selector)
+            print("🎯 Found target element!")
+            return
+
+        except NoSuchElementException:
+            # Chưa thấy phần tử đích, tiếp tục click
+            try:
+                btn = driver.find_element(*button_selector)
+                if btn.is_enabled() and btn.is_displayed():
+                    btn.click()
+                    print("🖱 Clicked 'Next'")
+                else:
+                    print("⏳ Button not clickable yet")
+            except WebDriverException:
+                print("⚠️ Button not ready or not found")
+            time.sleep(retry_interval)
+
+    raise TimeoutError("❌ Timed out: Target element never appeared.")
 
 def login_to_zalo(index, instance_port, udid):
     service = None
@@ -70,11 +94,11 @@ def login_to_zalo(index, instance_port, udid):
         options.set_capability("systemPort", random.randint(8201, 8299))
 
         driver = webdriver.Remote(f"http://127.0.0.1:{instance_port}/wd/hub", options=options)
-        driver.implicitly_wait(10)
+        driver.implicitly_wait(7)
 
         # ============ BẮT ĐẦU CHUỖI ACTION ============
 
-        wait = WebDriverWait(driver, 20)
+        wait = WebDriverWait(driver, 100)
 
         # ViewGroup đầu tiên – CHỈNH THÀNH WAIT
         el5 = wait.until(
@@ -83,7 +107,7 @@ def login_to_zalo(index, instance_port, udid):
         el5.click()
 
         try:
-            el5 = WebDriverWait(driver, 20).until(
+            el5 = WebDriverWait(driver, 100).until(
                 EC.presence_of_element_located((
                     AppiumBy.ANDROID_UIAUTOMATOR,
                     'new UiSelector().className("android.view.View").instance(8)'
@@ -140,11 +164,13 @@ def login_to_zalo(index, instance_port, udid):
         )
         agree_chk.click()
 
-        next_btn = driver.find_element(
-            AppiumBy.ANDROID_UIAUTOMATOR,
-            'new UiSelector().text("Tiếp tục (Next)")'
-        )
-        next_btn.click()
+        click_until_element_appears(
+    driver,
+    button_selector=(AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("Tiếp tục (Next)")'),
+    target_selector=(AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("Tỉnh thành")'),
+    timeout=40,
+    retry_interval=0.3
+)
 
         el5 = wait.until(
             EC.presence_of_element_located((
@@ -170,13 +196,13 @@ def login_to_zalo(index, instance_port, udid):
         time.sleep(0.2)
         el8 = driver.find_element(
             AppiumBy.ANDROID_UIAUTOMATOR,
-            'new UiSelector().text("Please select a location & store to display the available registration time slots.")'
+             'new UiSelector().text("Please select a location & store to display the available registration time slots.")'
         )
         el8.click()
 
         el9 = driver.find_element(
             AppiumBy.ANDROID_UIAUTOMATOR,
-            'new UiSelector().text("25/06/202508:15 - 10:15")'
+            'new UiSelector().text("19/07/202508:15 - 11:45")'
         )
         el9.click()
 
